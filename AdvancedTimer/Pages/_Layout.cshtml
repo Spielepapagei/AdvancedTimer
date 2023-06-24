@@ -29,5 +29,12 @@
 </div>
 
 <script src="_framework/blazor.server.js"></script>
+<script>
+window.playAudio = function(file)
+{
+    var audio = new Audio(file);
+    audio.play();
+}
+</script>
 </body>
 </html>

@@ -1,6 +1,8 @@
 ﻿@page "/"
 @using AdvancedTimer.Models
 
+@inject IJSRuntime JsRuntime
+
 <PageTitle>Advanced Timer</PageTitle>
 
 <div class="col-lg-8 align-content-lg-center">
@@ -9,12 +11,12 @@
         <div class="btn-group px-0">
             <WButton CssClasses="btn-success"
                      Text="Start"
-                     WorkingText="Starting Timer"
+                     WorkingText="Running Timer"
                      OnClick="() => StartTimer(CurrentTimer)">
             </WButton>
             <WButton CssClasses="btn-danger"
-                     Text="Start"
-                     WorkingText="Starting Timer"
+                     Text="Stop"
+                     WorkingText="Stopping Timer"
                      OnClick="() => StopTimer()">
             </WButton>
         </div>
@@ -62,11 +64,6 @@
             <input class="form-check-input" type="checkbox" @bind="Loop">
             <label class="form-check-label" for="flexSwitchCheckDefault">Loop timer</label>
         </div>
-    
-        <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" @bind="SaveAndSound">
-            <label class="form-check-label" for="flexSwitchCheckDefault">Make a Sound on Finish</label>
-        </div>
     </div>
 
 
@@ -81,8 +78,7 @@
     private CancellationTokenSource cancellationTokenSource;
 
     private bool Loop;
-    private bool SaveAndSound;
-    
+
     private int Id;
     private int TimerValue;
     private readonly List<TimerModel> Timers = new();
@@ -123,11 +119,16 @@
     {
         cancellationTokenSource = new CancellationTokenSource();
 
+        await PlaySound("start");
+        
         do
         {
-            foreach (var timer in Timers.Skip(Timers.IndexOf(timerModel)))
+            // foreach (var timer in Timers.Skip(Timers.IndexOf(timerModel)))
+            foreach (var timer in Timers.ToArray())
             {
                 CurrentTimer = timer;
+                await InvokeAsync(StateHasChanged);
+                
                 var timerTime = timer.Seconds;
                 PeriodicTimer = new(TimeSpan.FromMilliseconds(1000));
 
@@ -135,35 +136,39 @@
                 {
                     if (timerTime <= 0)
                     {
-                        Console.WriteLine("Finished timer " + timer.Id);
-                        
+                        //Console.WriteLine("Finished timer " + timer.Id);
+                        await PlaySound("stop");
                         break;
                     }
 
                     if (cancellationTokenSource.IsCancellationRequested)
                     {
-                        Console.WriteLine("Stopped timer " + timer.Id);
+                        //Console.WriteLine("Stopped timer " + timer.Id);
                         return;
                     }
 
-                    Console.WriteLine(timerTime + " Seconds is left");
+                    //Console.WriteLine(timerTime + " Seconds is left");
                     timerTime--;
 
                     ProgressBar = Math.Round((double)timerTime / timer.Seconds * 100);
-                    Console.WriteLine(ProgressBar + " Progressbar");
+                    //Console.WriteLine(ProgressBar + " Progressbar");
                     await InvokeAsync(StateHasChanged);
                 }
             }
         } while (Loop);
         
-        Console.WriteLine("Stopped Timers");
+        //Console.WriteLine("Stopped Timers");
     }
     
-    private Task StopTimer()
+    private async Task StopTimer()
     {
         ProgressBar = 0;
         cancellationTokenSource?.Cancel();
-        return Task.CompletedTask;
+        await InvokeAsync(StateHasChanged);
     }
-    
+
+    private async Task PlaySound(string name)
+    {
+        await JsRuntime.InvokeVoidAsync("playAudio", $"sounds/{name}.mp3");
+    }
 }
